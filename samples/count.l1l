@@ -1,0 +1,16 @@
+preamble = !{ }!
+
+tokens = {
+    "a" = token "a",
+}
+
+rules = {
+    count: !{ acc: i32 }! -> !{ i32 }! = {
+        => !{ acc }!
+        "a" <cont:count(!{ acc + 1 }!)> => !{ cont }!
+    }
+
+    pub expr: !{ i32 }! = {
+        <cnt:count(!{ 0 }!)> => !{ cnt }!,
+    }
+}

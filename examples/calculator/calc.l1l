@@ -1,0 +1,40 @@
+preamble = !{
+    use std::str::FromStr;
+}!
+
+tokens = {
+    "lp" = token "(",
+    "rp" = token ")",
+    "*" = token "*",
+    "/" = token "/",
+    "+" = token "+",
+    "-" = token "-",
+    "n" = regex "[0-9]+",
+}
+
+rules = {
+    atom: !{ i32 }! = {
+        "lp" <value:expr> "rp" => !{ value }!,
+        <n:"n"> => !{ i32::from_str(n).unwrap() }!,
+    }
+
+    prod_cont: !{ acc: i32 }! -> !{ i32 }! = {
+        => !{ acc }!,
+        "*" <expr:atom> <cont:prod_cont(!{ acc * expr }!)> => !{ cont }!,
+        "/" <expr:atom> <cont:prod_cont(!{ acc / expr }!)> => !{ cont }!,
+    }
+
+    prod: !{ i32 }! = {
+        <expr:atom> <cont:prod_cont(!{ expr }!)> => !{ cont }!,
+    }
+
+    expr_cont: !{ acc: i32 }! -> !{ i32 }! = {
+        => !{ acc }!,
+        "+" <expr:prod> <cont:expr_cont(!{ acc + expr }!)> => !{ cont }!,
+        "-" <expr:prod> <cont:expr_cont(!{ acc - expr }!)> => !{ cont }!,
+    }
+
+    pub expr: !{ i32 }! = {
+        <expr:prod> <cont:expr_cont(!{ expr }!)> => !{ cont }!,
+    }
+}

@@ -1,0 +1,56 @@
+preamble = !{
+    use super::ast;
+}!
+
+tokens = {
+    ":" = token ":",
+    "(" = token "(",
+    ")" = token ")",
+    "," = token ",",
+    "fun" = token "fun",
+    "id" = regex "[_a-zA-Z][_0-9a-zA-Z]*",
+}
+
+rules = {
+    ty: !{ ast::Ty }! = {
+        <ty:"id"> => !{ ast::Ty(ty.to_owned()) }!,
+    }
+
+    ty_ann: !{ ast::Ty }! = {
+        ":" <ty:ty> => !{ ty }!,
+    }
+
+    arg: !{ ast::Arg }! = {
+        <name:"id"> <ty:ty_ann> => !{ 
+            ast::Arg {
+                name: name.to_owned(),
+                ty,
+            }
+        }!,
+    }
+
+    args_cont: !{ mut args: Vec<ast::Arg> }! -> !{ Vec<ast::Arg> }! = {
+        => !{ args }!,
+        "," <arg:arg> <cont:args_cont(!{ { args.push(arg); args} }!)> => !{ cont }!, 
+    } 
+
+    args: !{ Vec<ast::Arg> }! = {
+        => !{ Vec::new() }!,
+        <arg:arg> <cont:args_cont(!{ vec![arg] }!)> => !{ cont }!,
+    }
+
+    ret_ty: !{ Option<ast::Ty> }! = {
+        => !{ None }!,
+        <ty:ty_ann> => !{ Some(ty) }!,
+    }
+
+    pub sig: !{ ast::Signature }! = {
+        "fun" <name:"id"> "(" <args:args> ")" <ret_ty:ret_ty> => !{ 
+            ast::Signature {
+                name: name.to_string(),
+                args,
+                ret_ty,
+            } 
+        }!,
+    }
+}

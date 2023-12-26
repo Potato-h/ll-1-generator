@@ -1,0 +1,138 @@
+
+use generator::notation::{
+  tokens::Token,
+  lexer::LexicalError,
+};
+
+use generator::ast;
+use generator::lexer;
+
+grammar;
+
+Comma<T>: Vec<T> = { 
+    <mut v:(<T> ",")*> <e:T?> => {
+      match e {
+        Some(e) => { 
+          v.push(e);
+          v 
+        },
+        None => v,
+      }
+    }
+};
+
+Named<T>: (T, Option<String>) = {
+  "<" <id:"ident"> ":" <e:T> ">" => (e, Some(id)),
+  <e:T> => (e, None),
+}
+
+Preamble: String = {
+    "preamble" "=" <code:"code"> => code,
+}
+
+TokDesc: (lexer::Term, lexer::TokDesc) = {
+  <name:"literal"> "=" "token" <lit:"literal"> => (lexer::Term(name), lexer::TokDesc::Token(lit)),
+  <name:"literal"> "=" "regex" <lit:"literal"> => (lexer::Term(name), lexer::TokDesc::Regex(format!("\\A{lit}"))),
+}
+
+Tokens: lexer::Tokens = {
+  "tokens" "=" "{" <desc:Comma<TokDesc>> "}" => {
+    lexer::Tokens {
+      mapping: Vec::from_iter(desc),
+    }
+  }, 
+}
+
+NonTermArgs: String = {
+  "(" <code:"code"> ")" => code,
+}
+
+NonTermNode: (String, Option<String>) = {
+  <node:"ident"> <args:NonTermArgs?> => (node, args), 
+}
+
+Node: ast::Node = {
+  <n:Named<"literal">> => ast::Node::Term(lexer::Term(n.0), n.1),
+  <n:Named<NonTermNode>> => ast::Node::NonTerm {
+    node: ast::NonTerm(n.0.0),
+    extract_name: n.1,
+    args: n.0.1,
+  },
+}
+
+Rule: ast::Rule = {
+  <nodes:Node*> "=>" <code:"code"> "," => { 
+    ast::Rule {
+      nodes,
+      code,
+    } 
+  },
+}
+
+NonTermDefTy: (Option<String>, String) = {
+  <ret_ty:"code"> => (None, ret_ty),
+  <args:"code"> "->" <ret_ty:"code"> => (Some(args), ret_ty),
+}
+
+NonTermDef: ast::NonTermDef = {
+  <vis:"pub"?> <name:"ident"> ":" <ty:NonTermDefTy> "=" "{" <rules:Rule*> "}" => {
+    ast::NonTermDef {
+      name: ast::NonTerm(name),
+      args: ty.0,
+      ret_ty: ty.1,
+      rules,
+      is_pub: vis.is_some(),
+    }
+  },
+}
+
+GrammarDesc: ast::Grammar = {
+  "rules" "=" "{" <nonterms:NonTermDef*> "}" => {
+    ast::Grammar {
+      nonterms,
+    }
+  },
+}
+
+pub Description: ast::Language = {
+  <preamble:Preamble> <lexer:Tokens> <rules:GrammarDesc> => {
+    ast::Language {
+      preamble,
+      lexer,
+      grammar: rules, 
+    }
+  },
+}
+
+extern {
+  type Location = usize;
+  type Error = LexicalError;
+
+  enum Token {
+    "ident" => Token::Identifier(<String>),
+    "literal" => Token::Literal(<String>),
+    "code" => Token::Code(<String>),
+    
+    "preamble" => Token::Preamble,
+    "tokens" => Token::Tokens,
+    "rules" => Token::Rules,
+    
+    "token" => Token::Tok,
+    "regex" => Token::Reg,
+
+    "(" => Token::LParen,
+    ")" => Token::RParen,
+    "{" => Token::LBrace,
+    "}" => Token::RBrace,
+    "<" => Token::LAngle,
+    ">" => Token::RAngle,
+
+    "pub" => Token::Pub,
+
+    "=" => Token::Assign,
+    "=>" => Token::Arrow,
+    "," => Token::Comma,
+    ":" => Token::Colon,
+    "->" => Token::TyArrow,
+  }
+}
