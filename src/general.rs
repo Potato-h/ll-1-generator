@@ -1,3 +1,5 @@
+use std::fmt;
+
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -52,5 +54,25 @@ impl<'input> ParserState<'input> {
 
     pub fn bump(&mut self, bytes: usize) {
         self.stream = &self.stream[bytes..];
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ParseError<T> {
+    UnexpectedToken { actual: Option<T>, expected: T },
+    NoRuleFound(&'static str),
+}
+
+impl<T: fmt::Display> fmt::Display for ParseError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::UnexpectedToken { actual, expected } => match actual {
+                Some(actual) => {
+                    write!(f, "Unexpected token: Expect {expected}, but found {actual}")
+                }
+                None => write!(f, "Unexpected token: Expect {expected}, but found None"),
+            },
+            ParseError::NoRuleFound(state) => write!(f, "while parsing {state}, found no rules"),
+        }
     }
 }

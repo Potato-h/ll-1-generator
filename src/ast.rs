@@ -186,6 +186,7 @@ fn get_fn_name(nt: &str) -> Ident {
 impl NonTermDef {
     pub fn generate(&self, fst: &FirstMap, flw: &FollowMap) -> TokenStream {
         let fn_name = get_fn_name(&self.name.0);
+        let name = &self.name.0;
         let ret_ty = TokenStream::from_str(&self.ret_ty).unwrap();
         let args = code_or_empty(&self.args);
 
@@ -237,7 +238,7 @@ impl NonTermDef {
             quote! {
                 #(#terms)|* => {
                     #(#subparses)*
-                    Some({ #code })
+                    Ok({ #code })
                 },
             }
         });
@@ -260,10 +261,10 @@ impl NonTermDef {
         };
 
         quote! {
-            #vis fn #fn_name (parser: &mut ParserState, #args) -> Option<#ret_ty> {
+            #vis fn #fn_name (parser: &mut ParserState, #args) -> Result<#ret_ty, ParseError<Token>> {
                 match parser.token() {
                     #(#branches)*
-                    _ => None,
+                    _ => Err(ParseError::NoRuleFound(#name)),
                 }
             }
         }

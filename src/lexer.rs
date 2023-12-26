@@ -57,11 +57,22 @@ impl Tokens {
     }
 
     fn token_definition(&self) -> TokenStream {
+        let decls = self.terms();
         let names = self.terms();
+        let vals = self.terms().map(|term| &term.0);
 
         quote! {
-            enum Token {
-                #(#names),*
+            #[derive(Debug)]
+            pub enum Token {
+                #(#decls),*
+            }
+
+            impl fmt::Display for Token {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    match self {
+                        #(Token::#names => write!(f, #vals)),*
+                    }
+                }
             }
         }
     }
@@ -94,8 +105,15 @@ impl Tokens {
             };
 
             quote! {
-                fn #parse_fn<'a>(parser: &mut ParserState<'a>) -> Option<&'a str> {
-                    #parse_body
+                fn #parse_fn<'a>(parser: &mut ParserState<'a>) -> Result<&'a str, ParseError<Token>> {
+                    if let Some(res) = #parse_body {
+                        Ok(res)
+                    } else {
+                        Err(ParseError::UnexpectedToken {
+                            actual: parser.token(),
+                            expected: Token::#tok
+                        })
+                    }   
                 }
 
                 fn #check_fn(parser: &mut ParserState) -> bool {

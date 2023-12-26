@@ -27,5 +27,3 @@ proc-macro2 = "*"
 quote = "*"
 lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }
 logos = "0.12.0"
-regex = "*"
-lazy_static = "*"

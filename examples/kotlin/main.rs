@@ -163,9 +163,8 @@ include!("kotlin_parser.rs");
 fn main() {
     let source = "fun foo(a:Int,b:Double):Double";
     let mut parser = parser::ParserState::new(source);
-    if let Some(sig) = parser::parse_sig(&mut parser) {
-        println!("{}", sig.paint());
-    } else {
-        eprintln!("Parse error");
+    match parser::parse_sig(&mut parser) {
+        Ok(sig) => println!("{}", sig.paint()),
+        Err(e) => println!("Failed to parse: {e}"),
     }
 }
